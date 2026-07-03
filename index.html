@@ -81,19 +81,17 @@
     </div>
 
     <div class="video-container">
-        <!-- Background မှာ Video မရပ်သွားစေရန် playsinline နှင့် autoplay ကို သေချာထည့်ထားသည် -->
         <video id="localScreenVideo" autoplay playsinline webkit-playsinline muted loops></video>
     </div>
 
-    <!-- Background အလုပ်လုပ်စေရန် ကူညီမည့် Audio Element -->
     <audio id="bgKeepAliveAudio" loop muted playsinline></audio>
-
     <canvas id="captureCanvas" style="display:none;"></canvas>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
+        // ပြောင်းလဲထားသော Firebase Config အသစ်
         const firebaseConfig = {
             apiKey: "AIzaSyAtkK8QrsdAlT87VDZN4TNILGGYWyI5T6o",
             authDomain: "vor-solo.firebaseapp.com",
@@ -101,8 +99,8 @@
             projectId: "vor-solo",
             storageBucket: "vor-solo.firebasestorage.app",
             messagingSenderId: "856896766437",
-            appId: "1:856896766437:web:3431fc6596d95aa0e8ef0c",
-            measurementId: "G-0PYHWM5Y4P"
+            appId: "1:856896766437:web:725247533147ee85e8ef0c",
+            measurementId: "G-JHMRXYQLSV"
         };
 
         const app = initializeApp(firebaseConfig);
@@ -112,7 +110,6 @@
 
         let screenStream;
         const localScreenVideo = document.getElementById('localScreenVideo');
-        const bgAudio = document.getElementById('bgKeepAliveAudio');
         const canvas = document.getElementById('captureCanvas');
         const ctx = canvas.getContext('2d');
         let streamInterval;
@@ -142,7 +139,6 @@
         document.getElementById('resSelect').addEventListener('change', applyQualityChanges);
         document.getElementById('fpsSelect').addEventListener('change', applyQualityChanges);
 
-        // Browser ကို Background တွင် မအိပ်သွားစေရန် ဖန်တီးပေးသည့် စနစ်
         function activateBackgroundMode() {
             if ('mediaSession' in navigator) {
                 navigator.mediaSession.metadata = new MediaMetadata({
@@ -150,18 +146,14 @@
                     artist: 'Active Background Mirroring',
                     album: 'Live Streaming Overlay'
                 });
-                
-                // Media Control များကို ဖမ်းယူထားပြီး Browser Process ကို Alive ဖြစ်စေရန်လုပ်ခြင်း
                 navigator.mediaSession.setActionHandler('play', () => {});
                 navigator.mediaSession.setActionHandler('pause', () => {});
             }
-
-            // Web Audio Context အသုံးပြုပြီး အသံတိတ် Wave တစ်ခုကို ဖန်တီးကာ Background တွင် Run ခိုင်းခြင်း
             try {
                 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 const oscillator = audioCtx.createOscillator();
                 const gainNode = audioCtx.createGain();
-                gainNode.gain.value = 0.001; // နားမကြားနိုင်လောက်အောင် အသံတိုးထားခြင်း
+                gainNode.gain.value = 0.001;
                 oscillator.connect(gainNode);
                 gainNode.connect(audioCtx.destination);
                 oscillator.start();
@@ -189,7 +181,6 @@
                 localScreenVideo.srcObject = screenStream;
                 document.getElementById('status').innerText = "🟢 Active! အပြင်ထွက်၍ ဂိမ်းဆော့နိုင်ပါပြီ။";
                 
-                // Background Mode စတင်နှိုးဆော်ခြင်း
                 activateBackgroundMode();
                 sendLayoutUpdate();
 
@@ -198,7 +189,6 @@
                 
                 const intervalMs = Math.round(1000 / fpsMode);
                 streamInterval = setInterval(() => {
-                    // Browser က Background ရောက်သွားသည့်တိုင် ရပ်မသွားစေဘဲ Canvas ပေါ် ဆက်ဆွဲခိုင်းခြင်း
                     if (localScreenVideo.readyState === localScreenVideo.HAVE_ENOUGH_DATA) {
                         ctx.drawImage(localScreenVideo, 0, 0, canvas.width, canvas.height);
                         const dataUrl = canvas.toDataURL('image/jpeg', 0.45); 
