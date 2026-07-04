@@ -3,95 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SOLO Stream - Persistent Screen Mirroring</title>
+    <title>Screen Share - Sender (Firebase)</title>
     <style>
-        body { margin: 0; padding: 20px; background: #121212; color: #fff; font-family: sans-serif; text-align: center; }
-        .btn { padding: 15px 30px; font-size: 16px; font-weight: bold; background: #00ffcc; border: none; border-radius: 8px; cursor: pointer; color: #000; box-shadow: 0 4px 15px rgba(0,255,204,0.3); margin: 5px; }
-        #status { margin-top: 15px; color: #ffaa00; font-size: 15px; }
-        
-        .list-box { background: #1e1e1e; padding: 15px; border-radius: 12px; max-width: 400px; margin: 20px auto; border: 1px solid #333; text-align: left; }
-        .list-title { font-weight: bold; color: #00ffcc; margin-bottom: 10px; border-bottom: 1px solid #333; padding-bottom: 5px; }
-        
-        .control-box { background: #1e1e1e; padding: 20px; border-radius: 12px; max-width: 400px; margin: 20px auto; text-align: left; border: 1px solid #333; }
-        .control-group { margin-bottom: 15px; }
-        .control-group label { display: block; margin-bottom: 5px; color: #00ffcc; font-weight: bold; }
-        .control-group input, .control-group select { width: 100%; accent-color: #00ffcc; background: #2a2a2a; color: white; border: 1px solid #444; padding: 8px; border-radius: 6px; }
-        
-        .video-container { position: relative; max-width: 400px; margin: 20px auto; }
-        video { width: 100%; border-radius: 12px; border: 3px solid #333; background: #000; }
+        body { font-family: sans-serif; background-color: #1a1a1a; color: white; text-align: center; padding-top: 50px; }
+        button { padding: 15px 30px; font-size: 18px; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background-color: #0056b3; }
+        video { width: 100%; max-width: 600px; background: #000; border: 2px solid #333; margin-top: 20px; border-radius: 8px; }
     </style>
 </head>
 <body>
+    <h2>Sender: Share Your Screen</h2>
+    <button id="startBtn">Start Sharing</button>
+    <br>
+    <video id="localVideo" autoplay playsinline muted></video>
 
-    <h1>🖥️ PERSISTENT SCREEN CONTROLLER</h1>
-    <div>
-        <button class="btn" id="startScreenBtn">🖥️ Screen Share စတင်မည်</button>
-    </div>
-    <div id="status">ခလုတ်ကို နှိပ်ပြီး Screen Sharing ခွင့်ပြုပေးပါ...</div>
-
-    <div class="list-box">
-        <div class="list-title">👥 ချိတ်ဆက်မှု အခြေအနေ</div>
-        <div style="color:#00ffcc; text-align:center; font-size:14px;">StreamChamp Secure Direct Mode Active</div>
-    </div>
-
-    <!-- ⚙️ Screen Quality Settings Box -->
-    <div class="control-box">
-        <div class="list-title" style="border:none;">⚙️ SCREEN QUALITY SETTINGS</div>
-        <div class="control-group">
-            <label>အချိုးအစား (Aspect Ratio)</label>
-            <select id="ratioSelect">
-                <option value="16:9" selected>16:9 (Landscape / Gaming)</option>
-                <option value="9:16">9:16 (Portrait / Phone UI)</option>
-                <option value="1:1">1:1 (Square)</option>
-            </select>
-        </div>
-        <div class="control-group">
-            <label>ကြည်လင်ပြတ်သားမှု (Resolution)</label>
-            <select id="resSelect">
-                <option value="720p">720p (HD)</option>
-                <option value="1080p" selected>1080p (Full HD)</option>
-                <option value="1440p">1440p (2K Ultra)</option>
-            </select>
-        </div>
-        <div class="control-group">
-            <label>ဖရိမ်နှုန်း (Frame Rate)</label>
-            <select id="fpsSelect">
-                <option value="30">30 FPS</option>
-                <option value="60" selected>60 FPS</option>
-                <option value="90">90 FPS (Extreme Gaming)</option>
-            </select>
-        </div>
-    </div>
-
-    <!-- 📐 Layout Controls Box -->
-    <div class="control-box">
-        <div class="list-title" style="border:none;">📐 LAYOUT CONTROLS</div>
-        <div class="control-group">
-            <label>အပေါ် / အောက် (Top Position)</label>
-            <input type="range" id="topSlider" min="0" max="900" value="30">
-        </div>
-        <div class="control-group">
-            <label>ဘယ် / ညာ (Left Position)</label>
-            <input type="range" id="leftSlider" min="0" max="1600" value="30">
-        </div>
-        <div class="control-group">
-            <label>အရွယ်အစား (Screen Mirror Size)</label>
-            <input type="range" id="sizeSlider" min="150" max="1200" value="400">
-        </div>
-    </div>
-
-    <div class="video-container">
-        <video id="localScreenVideo" autoplay playsinline webkit-playsinline muted loops></video>
-    </div>
-
-    <audio id="bgKeepAliveAudio" loop muted playsinline></audio>
-    <canvas id="captureCanvas" style="display:none;"></canvas>
-
+    <!-- Firebase WebRTC Logic -->
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, set, onValue, push, onChildAdded, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-        // ပြောင်းလဲထားသော Firebase Config အသစ်
+        // Your Firebase Configuration
         const firebaseConfig = {
             apiKey: "AIzaSyAtkK8QrsdAlT87VDZN4TNILGGYWyI5T6o",
             authDomain: "vor-solo.firebaseapp.com",
@@ -105,108 +36,66 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
-        const layoutRef = ref(db, 'stream/layout');
-        const imageRef = ref(db, 'stream/imageFrame');
 
-        let screenStream;
-        const localScreenVideo = document.getElementById('localScreenVideo');
-        const canvas = document.getElementById('captureCanvas');
-        const ctx = canvas.getContext('2d');
-        let streamInterval;
+        // Database references for a specific "room"
+        const roomRef = ref(db, 'rooms/testRoom');
+        const offerRef = ref(db, 'rooms/testRoom/offer');
+        const answerRef = ref(db, 'rooms/testRoom/answer');
+        const senderCandidatesRef = ref(db, 'rooms/testRoom/senderCandidates');
+        const receiverCandidatesRef = ref(db, 'rooms/testRoom/receiverCandidates');
 
-        function sendLayoutUpdate() {
-            set(layoutRef, {
-                top: document.getElementById('topSlider').value + "px",
-                left: document.getElementById('leftSlider').value + "px",
-                width: document.getElementById('sizeSlider').value + "px",
-                ratio: document.getElementById('ratioSelect').value
-            });
-        }
+        const localVideo = document.getElementById('localVideo');
+        const configuration = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+        let peerConnection = new RTCPeerConnection(configuration);
 
-        document.getElementById('topSlider').addEventListener('input', sendLayoutUpdate);
-        document.getElementById('leftSlider').addEventListener('input', sendLayoutUpdate);
-        document.getElementById('sizeSlider').addEventListener('input', sendLayoutUpdate);
-        document.getElementById('ratioSelect').addEventListener('change', sendLayoutUpdate);
-
-        async function applyQualityChanges() {
-            if (screenStream) {
-                screenStream.getTracks().forEach(track => track.stop());
-                clearInterval(streamInterval);
-                await startScreenMirror();
-            }
-        }
-
-        document.getElementById('resSelect').addEventListener('change', applyQualityChanges);
-        document.getElementById('fpsSelect').addEventListener('change', applyQualityChanges);
-
-        function activateBackgroundMode() {
-            if ('mediaSession' in navigator) {
-                navigator.mediaSession.metadata = new MediaMetadata({
-                    title: 'SOLO Stream Engine',
-                    artist: 'Active Background Mirroring',
-                    album: 'Live Streaming Overlay'
-                });
-                navigator.mediaSession.setActionHandler('play', () => {});
-                navigator.mediaSession.setActionHandler('pause', () => {});
-            }
+        document.getElementById('startBtn').addEventListener('click', async () => {
             try {
-                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                const oscillator = audioCtx.createOscillator();
-                const gainNode = audioCtx.createGain();
-                gainNode.gain.value = 0.001;
-                oscillator.connect(gainNode);
-                gainNode.connect(audioCtx.destination);
-                oscillator.start();
-            } catch (e) {
-                console.log("Background Audio Context Init failed");
-            }
-        }
+                // Clear old database data before starting a new session
+                await remove(roomRef);
 
-        window.startScreenMirror = async function() {
-            document.getElementById('status').innerText = "Screen Share Permission တောင်းဆိုနေပါသည်...";
-            
-            const resMode = document.getElementById('resSelect').value;
-            const fpsMode = parseInt(document.getElementById('fpsSelect').value);
-            
-            let targetWidth = 1920; let targetHeight = 1080;
-            if (resMode === "720p") { targetWidth = 1280; targetHeight = 720; }
-            else if (resMode === "1440p") { targetWidth = 2560; targetHeight = 1440; }
+                const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+                localVideo.srcObject = stream;
+                
+                stream.getTracks().forEach(track => peerConnection.addTrack(track, stream));
 
-            try {
-                screenStream = await navigator.mediaDevices.getDisplayMedia({
-                    video: { width: { ideal: targetWidth }, height: { ideal: targetHeight }, frameRate: { ideal: fpsMode } },
-                    audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
-                });
+                // Generate Offer
+                const offer = await peerConnection.createOffer();
+                await peerConnection.setLocalDescription(offer);
                 
-                localScreenVideo.srcObject = screenStream;
-                document.getElementById('status').innerText = "🟢 Active! အပြင်ထွက်၍ ဂိမ်းဆော့နိုင်ပါပြီ။";
-                
-                activateBackgroundMode();
-                sendLayoutUpdate();
+                // Save Offer to Firebase
+                await set(offerRef, { type: offer.type, sdp: offer.sdp });
 
-                canvas.width = targetWidth;
-                canvas.height = targetHeight;
-                
-                const intervalMs = Math.round(1000 / fpsMode);
-                streamInterval = setInterval(() => {
-                    if (localScreenVideo.readyState === localScreenVideo.HAVE_ENOUGH_DATA) {
-                        ctx.drawImage(localScreenVideo, 0, 0, canvas.width, canvas.height);
-                        const dataUrl = canvas.toDataURL('image/jpeg', 0.45); 
-                        set(imageRef, dataUrl);
+                document.getElementById('startBtn').innerText = "Sharing...";
+                document.getElementById('startBtn').disabled = true;
+
+                // Listen for Answer from Receiver
+                onValue(answerRef, async (snapshot) => {
+                    const data = snapshot.val();
+                    if (data && !peerConnection.currentRemoteDescription) {
+                        const answer = new RTCSessionDescription(data);
+                        await peerConnection.setRemoteDescription(answer);
                     }
-                }, intervalMs);
+                });
 
-                screenStream.getVideoTracks()[0].onended = () => {
-                    clearInterval(streamInterval);
-                    document.getElementById('status').innerText = "🔴 Screen Share ကို ရပ်ဆိုင်းလိုက်ပါပြီ။";
-                };
+                // Listen for Receiver ICE candidates
+                onChildAdded(receiverCandidatesRef, async (snapshot) => {
+                    const data = snapshot.val();
+                    if (data) {
+                        await peerConnection.addIceCandidate(new RTCIceCandidate(data));
+                    }
+                });
 
             } catch (err) {
-                document.getElementById('status').innerText = "Error: " + err.message;
+                console.error("Error sharing screen:", err);
             }
-        }
-        
-        document.getElementById('startScreenBtn').addEventListener('click', startScreenMirror);
+        });
+
+        // Push local ICE candidates to Firebase
+        peerConnection.onicecandidate = (event) => {
+            if (event.candidate) {
+                push(senderCandidatesRef, event.candidate.toJSON());
+            }
+        };
     </script>
 </body>
 </html>
